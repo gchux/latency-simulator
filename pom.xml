@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>dev.chux.gcp.crun</groupId>
+  <artifactId>latency</artifactId>
+  <version>1.0.0</version>
+
+  <parent>
+    <groupId>com.google.cloud.samples</groupId>
+    <artifactId>shared-configuration</artifactId>
+    <version>1.2.0</version>
+  </parent>
+
+  <properties>
+    <java.version>17</java.version>
+    <maven.compiler.source>17</maven.compiler.source>
+    <maven.compiler.target>17</maven.compiler.target>
+    <!-- customize dokcer image to be created via JIB -->
+    <gcp.projectId></gcp.projectId>
+    <gcp.artifacts.base></gcp.artifacts.base>
+    <gcp.artifacts.repo></gcp.artifacts.repo>
+    <docker.image.name></docker.image.name>
+    <docker.image.tag></docker.image.tag>
+    <docker.image>${gcp.artifacts.base}/${gcp.projectId}/${gcp.artifacts.repo}/${docker.image.name}:${docker.image.tag}</docker.image>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>com.google.cloud</groupId>
+        <artifactId>libraries-bom</artifactId>
+        <version>24.0.0</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+      <version>2.7.9</version>
+      <exclusions>
+        <!-- Exclude the Tomcat dependency -->
+        <exclusion>
+          <groupId>org.springframework.boot</groupId>
+          <artifactId>spring-boot-starter-tomcat</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <!-- Use Jetty instead -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-jetty</artifactId>
+      <version>2.7.9</version>
+    </dependency>
+
+    <!-- Compile/runtime dependencies -->
+
+    <dependency>
+      <groupId>javax.servlet</groupId>
+      <artifactId>javax.servlet-api</artifactId>
+      <version>3.1.0</version>
+      <type>jar</type>
+      <scope>provided</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>32.1.1-jre</version>
+    </dependency>
+
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+        <version>2.7.9</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>repackage</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>com.google.cloud.tools</groupId>
+        <artifactId>jib-maven-plugin</artifactId>
+        <version>2.8.0</version>
+        <configuration>
+          <from>
+            <image>eclipse-temurin:17-jdk-alpine</image>
+          </from>
+          <to>
+            <image>${docker.image}</image>
+          </to>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>
