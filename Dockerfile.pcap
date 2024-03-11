@@ -25,6 +25,7 @@ COPY --from=build ${DEPENDENCY}/BOOT-INF/classes /app
 
 ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib
 
+COPY ./profiles /profiles
 COPY ./sandbox /sandbox
 COPY ./entrypoint_pcap.sh /entrypoint.sh
 
