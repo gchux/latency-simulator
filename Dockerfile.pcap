@@ -1,0 +1,33 @@
+FROM eclipse-temurin:17-jdk as build
+WORKDIR /workspace/app
+COPY mvnw .
+COPY .mvn .mvn
+COPY pom.xml .
+COPY src src
+RUN --mount=type=cache,target=/root/.m2 ./mvnw install -DskipTests
+RUN mkdir -p target/dependency && (cd target/dependency; jar -xf ../*.jar)
+
+FROM ubuntu
+
+ENV JAVA_HOME=/opt/java/openjdk
+COPY --from=eclipse-temurin:17 $JAVA_HOME $JAVA_HOME
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
+
+RUN apt-get update && apt-get install -y libpcap-dev && apt-get clean
+
+VOLUME /tmp
+
+ARG DEPENDENCY=/workspace/app/target/dependency
+
+COPY --from=build ${DEPENDENCY}/BOOT-INF/lib /app/lib
+COPY --from=build ${DEPENDENCY}/META-INF /app/META-INF
+COPY --from=build ${DEPENDENCY}/BOOT-INF/classes /app
+
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib
+
+COPY ./sandbox /sandbox
+COPY ./entrypoint_pcap.sh /entrypoint.sh
+
+USER 0:0
+
+ENTRYPOINT ["/entrypoint.sh"]
