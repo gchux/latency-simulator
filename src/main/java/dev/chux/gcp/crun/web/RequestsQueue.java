@@ -3,14 +3,31 @@ package dev.chux.gcp.crun.web;
 import java.lang.ref.WeakReference;
 
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Value;
 
-import java.time.Duration;
 import java.util.UUID;
 import java.util.Optional;
 import java.util.function.Supplier;
+
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+
+import jakarta.servlet.AsyncContext;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.ServletResponse;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.Futures;
+
+import com.google.common.base.Objects;
+import com.google.common.collect.Queues;
+import java.time.Duration;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -18,36 +35,18 @@ import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.Callable;
 import java.util.concurrent.DelayQueue;
 import java.util.concurrent.Delayed;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.RejectedExecutionException;
-
-import javax.servlet.AsyncContext;
-import javax.servlet.ServletRequest;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.ServletResponse;
-
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.base.Objects;
-import com.google.common.collect.Queues;
 import com.google.common.base.Preconditions;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.FutureCallback;
+import java.util.concurrent.RejectedExecutionException;
 
 @Component
 @Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
 public class RequestsQueue {
   
-  private static final int EXTRA_TASKS = 3;
-
   private final int minConcurrentRequests;
   private final int maxConcurrentRequests;
 
@@ -62,23 +61,21 @@ public class RequestsQueue {
 
   private final BlockingQueue<UUID> uuidQueue;
 
-  private final Duration maxPendingLatency;
+  private final Duration maxPendingLatency = Duration.ofSeconds(299l);
 
-  RequestsQueue(@Value("${app.web.requests.minConcurrent}") Integer minConcurrentRequests,
-                @Value("${app.web.requests.maxConcurrent}") Integer maxConcurrentRequests,
-                @Value("${app.web.requests.maxPendingLatency}") Long maxPendingLatency) {
+  //RequestsQueue(@Value("app.web.requests.minConcurrent") int minConcurrentRequests,
+  //    @Value("app.web.requests.maxConcurrent") int maxConcurrentRequests) {
+  RequestsQueue() {
 
-    this.minConcurrentRequests = minConcurrentRequests.intValue();
-    this.maxConcurrentRequests = maxConcurrentRequests.intValue();
-    this.maxPendingLatency = Duration.ofSeconds(maxPendingLatency.longValue());
+    this.minConcurrentRequests = 1;
+    this.maxConcurrentRequests = 10;
 
     this.pendingQueue = new DelayQueue<>();
-    this.requestsQueue = Queues.newLinkedBlockingQueue(this.maxConcurrentRequests + EXTRA_TASKS);
-    this.requestsExecutor = new ThreadPoolExecutor(this.minConcurrentRequests + EXTRA_TASKS, 
-        this.maxConcurrentRequests + EXTRA_TASKS, 5L, TimeUnit.SECONDS, this.requestsQueue);
+    this.requestsQueue = Queues.newLinkedBlockingQueue(13); // buffer 80 requests
+    this.requestsExecutor = new ThreadPoolExecutor(13, 13, 5L, TimeUnit.SECONDS, this.requestsQueue);
     this.requestsService = MoreExecutors.listeningDecorator(this.requestsExecutor);
 
-    this.uuidQueue = Queues.newLinkedBlockingQueue(this.maxConcurrentRequests);
+    this.uuidQueue = Queues.newLinkedBlockingQueue(10);
     this.requestsService.submit(new Runnable() {
       public void run() {
         while( true ) {
@@ -117,7 +114,7 @@ public class RequestsQueue {
     final int executorActiveCount = this.requestsExecutor.getActiveCount();
     final int executorPoolSize = this.requestsExecutor.getPoolSize();
 
-    System.out.println("Q: " + queueSize + "/" + queueRemainingCapacity + "/" + (this.maxConcurrentRequests + EXTRA_TASKS));
+    System.out.println("Q: " + queueSize + "/" + queueRemainingCapacity + "/13");
     System.out.println("X: " + executorPoolSize + "/" + executorActiveCount + "/" + this.requestsExecutor.getMaximumPoolSize());
 
     final long maxPendingLatency = this.maxPendingLatency.toMillis();
@@ -127,7 +124,7 @@ public class RequestsQueue {
     System.out.println("submit: " + restRequest);
 
     try {
-      if( !this.startSignal.await(maxPendingLatency, TimeUnit.MILLISECONDS) ) { 
+      if( !this.startSignal.await( 299l /* maxPendingLatency */ , TimeUnit.SECONDS) ) { 
         // wait for restController to be registered
         response.setStatus(504);
         return Futures.immediateCancelledFuture();

@@ -12,6 +12,9 @@ import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.Banner;
 
+import java.util.Map;
+import java.util.HashMap;
+
 import dev.chux.gcp.crun.web.WebModule;
 import dev.chux.gcp.crun.web.RequestsQueue;
 import dev.chux.gcp.crun.internal.RestModule;
@@ -41,19 +44,26 @@ public class Application {
 
     System.out.println("startup latency = " + Integer.toString(startupLatency, 10));
 
-    try {
-      Thread.sleep(startupLatency); // simulate cold-start
-    } catch(Exception ex) {
-      ex.printStackTrace(System.out);
-    }
-
     final String[] _args = new String[]{};
 
-    final SpringApplication application = 
-      new SpringApplicationBuilder(WebModule.class).bannerMode(Banner.Mode.OFF).properties(properties).build();
-    final ConfigurableApplicationContext parent = application.run(_args);
+    final Map<String, Object> settings = new HashMap<>();
+    settings.put("server.port", Integer.valueOf(8080));
+    final ConfigurableApplicationContext ctx = startApplication(_args, properties, settings);
+
+    System.out.println("SpringBoot Context: " + ctx);
+  }
+
+  private static ConfigurableApplicationContext startApplication(final String[] args,
+      final Properties properties, final Map<String, Object> settings) {
+
+    final SpringApplication application = new SpringApplicationBuilder(WebModule.class)
+      .bannerMode(Banner.Mode.OFF).properties(settings).properties(properties).build();
+
+    final ConfigurableApplicationContext parent = application.run(args);
     final ConfigurableApplicationContext child = new SpringApplicationBuilder().bannerMode(Banner.Mode.OFF)
-      .sources(Application.class).parent(parent).child(RestModule.class).web(WebApplicationType.NONE).run(_args);
+      .sources(Application.class).parent(parent).child(RestModule.class).web(WebApplicationType.NONE).run(args);
+
+    return parent;
   }
 
   private static Properties loadProperties(final String latencyProfile) {

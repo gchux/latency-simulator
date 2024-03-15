@@ -1,19 +1,26 @@
-FROM eclipse-temurin:17-jdk-alpine as build
+FROM eclipse-temurin:17-jdk as build
 WORKDIR /workspace/app
-
 COPY mvnw .
 COPY .mvn .mvn
 COPY pom.xml .
 COPY src src
-
 RUN --mount=type=cache,target=/root/.m2 ./mvnw install -DskipTests
 RUN mkdir -p target/dependency && (cd target/dependency; jar -xf ../*.jar)
 
-FROM eclipse-temurin:17-jdk-alpine
+FROM ubuntu
+
+ENV JAVA_HOME=/opt/java/openjdk
+COPY --from=eclipse-temurin:17 $JAVA_HOME $JAVA_HOME
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
+
 VOLUME /tmp
+
 ARG DEPENDENCY=/workspace/app/target/dependency
+
 COPY --from=build ${DEPENDENCY}/BOOT-INF/lib /app/lib
 COPY --from=build ${DEPENDENCY}/META-INF /app/META-INF
 COPY --from=build ${DEPENDENCY}/BOOT-INF/classes /app
-copy ./profiles /profiles
-ENTRYPOINT ["java","-cp","app:app/lib/*","dev.chux.gcp.crun.Application"]
+
+COPY ./profiles /profiles
+
+ENTRYPOINT ["java", "-cp", "app:app/lib/*", "dev.chux.gcp.crun.Application"]
