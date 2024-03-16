@@ -41,8 +41,14 @@ public class RedisController {
     REDIS_CLIENT.setOptions(REDIS_CLIENT_OPTIONS);
   }
 
-  private static final int KEYS = 500;
-  private static final int XL_KEYS = 5;
+  private static final int SMALL_KEYS = Integer.parseInt(System.getenv("SMALL_KEYS"));
+  private static final String SMALL_KEY_PREFIX = System.getenv("SMALL_KEY_PREFIX");
+
+  private static final int MEDIUM_KEYS = Integer.parseInt(System.getenv("MEDIUM_KEYS"));
+  private static final String MEDIUM_KEY_PREFIX = System.getenv("MEDIUM_KEY_PREFIX");
+
+  private static final int LARGE_KEYS = Integer.parseInt(System.getenv("LARGE_KEYS"));
+  private static final String LARGE_KEY_PREFIX = System.getenv("LARGE_KEY_PREFIX");
 
   @GetMapping("/")
   public ResponseEntity<String> 
@@ -72,10 +78,12 @@ public class RedisController {
   }
 
   private static void test() {
-    final long latency = RedisController.testRedis("key-", KEYS)/KEYS;
-    final long xLatency = RedisController.testRedis("xl-key-", XL_KEYS)/XL_KEYS;
-    System.out.println("GET KEY average latency @[" + REDIS_REGION + "/" + REDIS_HOST + "]: " + latency);
-    System.out.println("GET XL-KEY average latency @[" + REDIS_REGION + "/" + REDIS_HOST + "]: " + xLatency);
+    final long smallKeysLatency = RedisController.testRedis(SMALL_KEY_PREFIX, SMALL_KEYS)/SMALL_KEYS;
+    final long mediumKeysLatency = RedisController.testRedis(MEDIUM_KEY_PREFIX, MEDIUM_KEYS)/MEDIUM_KEYS;
+    final long largeKeysLatency = RedisController.testRedis(LARGE_KEY_PREFIX, LARGE_KEYS)/LARGE_KEYS;
+    System.out.println("GET " + Integer.toString(SMALL_KEYS, 10) + " SMALL_KEYS average latency @[" + REDIS_REGION + "/" + REDIS_HOST + "]: " + smallKeysLatency);
+    System.out.println("GET " + Integer.toString(MEDIUM_KEYS, 10) + " MEDIUM_KEYS average latency @[" + REDIS_REGION + "/" + REDIS_HOST + "]: " + mediumKeysLatency);
+    System.out.println("GET " + Integer.toString(LARGE_KEYS, 10) + " LARGE_KEYS average latency @[" + REDIS_REGION + "/" + REDIS_HOST + "]: " + largeKeysLatency);
   }
 
   private static long testRedis(final String keyPrefix, final int rounds) {
@@ -91,7 +99,7 @@ public class RedisController {
       final String value = sync.get(key);
       final long _latency = System.nanoTime() - startNanos;
       latency += _latency;
-      System.out.println("KEY[" + key + "]=" + value.length() + " | latency=" + Long.toString(_latency, 10));
+      // System.out.println("KEY[" + key + "]=" + value.length() + " | latency=" + Long.toString(_latency, 10));
     }
     
     return latency;
