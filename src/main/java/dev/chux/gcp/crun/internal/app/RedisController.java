@@ -153,6 +153,9 @@ public class RedisController {
     return keyPrefixes[bucket] + rounds.get();
   }
 
+  /**
+   * returns: latency of all the operations in nanoseconds
+   */
   private static long nonSequentialTest() {
 
     final String[] keyPrefixes = new String[] { SMALL_KEY_PREFIX, MEDIUM_KEY_PREFIX, LARGE_KEY_PREFIX };
@@ -161,8 +164,8 @@ public class RedisController {
     final AtomicInteger[] buckets = 
       new AtomicInteger[]{ new AtomicInteger(0), new AtomicInteger(0), new AtomicInteger(0) };
 
-    final int sizeOfKeyPrefixes = keyPrefixes.length;
-    final int rounds = Arrays.asList(keyRounds).stream().mapToInt(Integer::intValue).sum();
+    final int sizeOfKeyPrefixes = KEY_PREFIXES.length;
+    final int rounds = Arrays.asList(KEY_ROUNDS).stream().mapToInt(Integer::intValue).sum();
 
     final StatefulRedisConnection<String, String> connection = REDIS_CLIENT.connect();
     final RedisStringCommands<String, String> sync = connection.sync();
@@ -170,8 +173,8 @@ public class RedisController {
     long latency = 0l;
     for(int i = 1 ; i <= rounds ; i++) {
       final String key = getNextKey(buckets, keyPrefixes, keyRounds, rounds);
-      System.out.println("KEY: " + key);
       final long _latency = getKeyFromRedis(key, sync);
+      System.out.println("KEY: " + key + " | latency (ns): " + _latency);
       latency += _latency;
       for( int j = 0 ; j < sizeOfKeyPrefixes ; j++ ) {
         if( key.startsWith(keyPrefixes[j]) ) {
