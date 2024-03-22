@@ -155,15 +155,14 @@ public class RedisController {
 
   private static long nonSequentialTest() {
 
-    final String[] keyPrefixes = 
-      new String[] { SMALL_KEY_PREFIX, MEDIUM_KEY_PREFIX, LARGE_KEY_PREFIX };
+    final String[] keyPrefixes = new String[] { SMALL_KEY_PREFIX, MEDIUM_KEY_PREFIX, LARGE_KEY_PREFIX };
     final Integer[] keyRounds = new Integer[] { SMALL_KEYS, MEDIUM_KEYS, LARGE_KEYS };
     final long[] keyLatencies = new long[] { 0l, 0l, 0l };
     final AtomicInteger[] buckets = 
       new AtomicInteger[]{ new AtomicInteger(0), new AtomicInteger(0), new AtomicInteger(0) };
 
-    int sizeOfKeyPrefixes = keyPrefixes.length;
-    int rounds = Arrays.asList(keyRounds).stream().mapToInt(Integer::intValue).sum();
+    final int sizeOfKeyPrefixes = keyPrefixes.length;
+    final int rounds = Arrays.asList(keyRounds).stream().mapToInt(Integer::intValue).sum();
 
     final StatefulRedisConnection<String, String> connection = REDIS_CLIENT.connect();
     final RedisStringCommands<String, String> sync = connection.sync();
@@ -184,9 +183,10 @@ public class RedisController {
 
     System.out.println("average latency (ns): " + (latency/rounds));
     for(int i = 0 ; i < sizeOfKeyPrefixes ; i++) {
-      final String keyType = KEY_PREFIXES[i].substring(0, KEY_PREFIXES[i].length()-1);
+      final String keyPrefix = KEY_PREFIXES[i];
+      final String keyType = keyPrefix.substring(0, keyPrefix.length()-1).toUpperCase();
       final long keysAvgLatency = keyLatencies[i] / KEY_ROUNDS[i];
-      System.out.println("GET " + Integer.toString(KEY_ROUNDS[i], 10) + " " + keyType + " average latency (ns) @[" + REDIS_REGION + "/" + REDIS_HOST + "]: " + keysAvgLatency);
+      System.out.println("GET " + Integer.toString(KEY_ROUNDS[i], 10) + " " + keyType + "s average latency (ns) @[" + REDIS_REGION + "/" + REDIS_HOST + "]: " + keysAvgLatency);
     }
 
     return latency;
