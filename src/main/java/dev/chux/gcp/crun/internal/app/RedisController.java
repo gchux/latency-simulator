@@ -371,7 +371,7 @@ public class RedisController {
       }
     }
     System.out.println("VALUES: " + uniqueValues);
-    System.out.println("KEYS: " + Integer.toString(keys, 10) + " | VALUES: " + Integer.toString(uniqueValues.size(), 10) + " (unique) + " + Integer.toString(values, 10) + "(repeated)");
+    System.out.println("KEYS: " + Integer.toString(keys, 10) + " | VALUES: " + Integer.toString(uniqueValues.size(), 10) + " (unique) + " + Integer.toString(values, 10) + " (repeated)");
 
     return latency;
   }
