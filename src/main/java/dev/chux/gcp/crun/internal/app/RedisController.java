@@ -121,9 +121,12 @@ public class RedisController {
   }
 
   private static void sequentialTest() {
-    final long smallKeysLatency = RedisController.sequentialTest(SMALL_KEY_PREFIX, SMALL_KEYS)/SMALL_KEYS;
-    final long mediumKeysLatency = RedisController.sequentialTest(MEDIUM_KEY_PREFIX, MEDIUM_KEYS)/MEDIUM_KEYS;
-    final long largeKeysLatency = RedisController.sequentialTest(LARGE_KEY_PREFIX, LARGE_KEYS)/LARGE_KEYS;
+    final long smallKeysLatency = (SMALL_KEYS == 0)? 0l 
+      : RedisController.sequentialTest(SMALL_KEY_PREFIX, SMALL_KEYS)/SMALL_KEYS;
+    final long mediumKeysLatency = (MEDIUM_KEYS == 0)? 0l 
+      : RedisController.sequentialTest(MEDIUM_KEY_PREFIX, MEDIUM_KEYS)/MEDIUM_KEYS;
+    final long largeKeysLatency = (LARGE_KEYS == 0)? 0l
+      : RedisController.sequentialTest(LARGE_KEY_PREFIX, LARGE_KEYS)/LARGE_KEYS;
     System.out.println("GET " + Integer.toString(SMALL_KEYS, 10) + " SMALL_KEYS average latency (ns) @[" + REDIS_REGION + "/" + REDIS_HOST + "]: " + smallKeysLatency);
     System.out.println("GET " + Integer.toString(MEDIUM_KEYS, 10) + " MEDIUM_KEYS average latency (ns) @[" + REDIS_REGION + "/" + REDIS_HOST + "]: " + mediumKeysLatency);
     System.out.println("GET " + Integer.toString(LARGE_KEYS, 10) + " LARGE_KEYS average latency (ns) @[" + REDIS_REGION + "/" + REDIS_HOST + "]: " + largeKeysLatency);
@@ -177,7 +180,7 @@ public class RedisController {
       System.out.println("KEY: " + key + " | latency (ns): " + _latency);
       latency += _latency;
       for( int j = 0 ; j < sizeOfKeyPrefixes ; j++ ) {
-        if( key.startsWith(keyPrefixes[j]) ) {
+        if( key.startsWith(KEY_PREFIXES[j]) ) {
           keyLatencies[j] += _latency;
           break;
         }
@@ -188,8 +191,9 @@ public class RedisController {
     for(int i = 0 ; i < sizeOfKeyPrefixes ; i++) {
       final String keyPrefix = KEY_PREFIXES[i];
       final String keyType = keyPrefix.substring(0, keyPrefix.length()-1).toUpperCase();
-      final long keysAvgLatency = keyLatencies[i] / KEY_ROUNDS[i];
-      System.out.println("GET " + Integer.toString(KEY_ROUNDS[i], 10) + " " + keyType + "s average latency (ns) @[" + REDIS_REGION + "/" + REDIS_HOST + "]: " + keysAvgLatency);
+      final int _rounds = KEY_ROUNDS[i];
+      final long keysAvgLatency = keyLatencies[i] / ((_rounds == 0)? 1 : _rounds);
+      System.out.println("GET " + Integer.toString(_rounds, 10) + " " + keyType + "s average latency (ns) @[" + REDIS_REGION + "/" + REDIS_HOST + "]: " + keysAvgLatency);
     }
 
     return latency;
