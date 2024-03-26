@@ -340,7 +340,7 @@ public class RedisController {
       keyPrefix = KEY_PREFIXES[i];
       for(int j = 1 ; j <= bucket ; j++ ) {
         final String key = keyPrefix + Integer.toString(j, 10); 
-        System.out.println("KEY: " + key);
+        // System.out.println("KEY: " + key);
         futures.add(commands.get(key));
         keys += 1;
       }
@@ -356,6 +356,7 @@ public class RedisController {
       _connection.close();
     }
 
+    /*
     final Set<Integer> uniqueValues = Sets.newHashSetWithExpectedSize(buckets);
     int values = 0;
     for(final RedisFuture future : futures) {
@@ -372,6 +373,7 @@ public class RedisController {
     }
     System.out.println("VALUES: " + uniqueValues);
     System.out.println("KEYS: " + Integer.toString(keys, 10) + " | VALUES: " + Integer.toString(uniqueValues.size(), 10) + " (unique) + " + Integer.toString(values, 10) + " (repeated)");
+    */
 
     return latency;
   }
