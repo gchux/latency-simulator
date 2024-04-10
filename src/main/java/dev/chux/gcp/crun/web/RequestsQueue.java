@@ -115,7 +115,6 @@ public class RequestsQueue implements GracefulShutdownCallback {
       } 
       final PendingRequest pendingRequest = restRequest.preSubmit(maxPendingLatency);
       this.pendingQueue.add(pendingRequest);
-      this.webServer.shutDownGracefully(this);
       return this.requestsService.submit(restRequest, restRequest);
     } catch(RejectedExecutionException rejectedEx) {
       System.out.println("rejected: " + restRequest);
