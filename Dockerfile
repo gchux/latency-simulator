@@ -22,5 +22,8 @@ COPY --from=build ${DEPENDENCY}/META-INF /app/META-INF
 COPY --from=build ${DEPENDENCY}/BOOT-INF/classes /app
 
 COPY ./profiles /profiles
+COPY ./glowroot.json /glowroot/admin.json
+COPY ./bin/glowroot.jar /glowroot/glowroot.jar
+COPY ./bin/glowroot/lib/glowroot-embedded-collector.jar /glowroot/lib/glowroot-embedded-collector.jar
 
-ENTRYPOINT ["java", "-cp", "app:app/lib/*", "dev.chux.gcp.crun.Application"]
+ENTRYPOINT ["java", "-javaagent:/glowroot/glowroot.jar", "-cp", "/glowroot/lib/*:app:app/lib/*", "dev.chux.gcp.crun.Application"]
