@@ -115,7 +115,6 @@ public class RequestsQueue implements GracefulShutdownCallback {
       } 
       final PendingRequest pendingRequest = restRequest.preSubmit(maxPendingLatency);
       this.pendingQueue.add(pendingRequest);
-      this.webServer.shutDownGracefully(this);
       return this.requestsService.submit(restRequest, restRequest);
     } catch(RejectedExecutionException rejectedEx) {
       System.out.println("rejected: " + restRequest);
@@ -183,6 +182,18 @@ public class RequestsQueue implements GracefulShutdownCallback {
               } catch(InterruptedException ex) {
                 ex.printStackTrace(System.out);  
               }
+            }
+          }
+        });
+
+        this.requestsService.submit(new Runnable() {
+          public void run() {
+            try {
+              Thread.sleep(1 * 1_000);
+              System.out.println("[SHUTDOWN]: " + RequestsQueue.this.webServer);
+              RequestsQueue.this.webServer.shutDownGracefully(RequestsQueue.this);
+            } catch(Exception e) {
+              e.printStackTrace(System.out);
             }
           }
         });
