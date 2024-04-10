@@ -4,11 +4,15 @@ import javax.servlet.ServletConfig;
 import javax.servlet.ServletContext;
 
 import org.springframework.context.ApplicationContext;
-import org.springframework.web.context.WebApplicationContext;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Scope;
+import org.springframework.web.context.WebApplicationContext;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.web.server.WebServer;
+import org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
@@ -21,7 +25,14 @@ import dev.chux.gcp.crun.internal.app.AppConfig;
 import static dev.chux.gcp.crun.Application.getLatency;
 
 @Configuration
-//@EnableAutoConfiguration
+// @EnableAutoConfiguration
+@ComponentScan(
+  basePackages = {"dev.chux.gcp.crun.internal"}, 
+  excludeFilters = {
+    @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, value = RestServlet.class),
+    @ComponentScan.Filter(type = FilterType.REGEX, pattern = "dev\\.chux\\.gcp\\.crun\\.internal\\.app\\..*")
+  }
+)
 public class RestModule {
 
   // latency in seconds
@@ -46,8 +57,13 @@ public class RestModule {
 
   @Bean
   @Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
-  public RestHandler provideRestServlet(@Qualifier("app-ServletConfig") ServletConfig servletConfig, 
-      @Qualifier("app-WebAppContext") WebApplicationContext webAppContext, RequestsQueue requestsQueue) {
+  public RestHandler provideRestServlet(
+      @Qualifier("app-ServletWebServerApplicationContext") ServletWebServerApplicationContext servletWebServerApplicationContext,
+      @Qualifier("app-ServletConfig") ServletConfig servletConfig, 
+      @Qualifier("app-WebAppContext") WebApplicationContext webAppContext, RequestsQueue requestsQueue,
+      @Qualifier("app-WebServer") WebServer webServer, @Qualifier("app-WebServer-kind") String webServerKind) {
+
+    servletWebServerApplicationContext.setServletConfig(servletConfig);
 
     final RestServlet restServlet = new RestServlet(webAppContext);
     
@@ -66,15 +82,18 @@ public class RestModule {
       ex.printStackTrace(System.err);
     }
 
-    requestsQueue.registerRestHandler(restServlet);
+    requestsQueue.registerRestHandler(webServer, webServerKind, restServlet);
     return restServlet;
   }
 
   @Bean("app-WebAppContext")
   @Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
-  public WebApplicationContext provideWebAppContext(ApplicationContext applicationContext, ServletContext servletContext) {
+  public WebApplicationContext provideWebAppContext(
+      @Qualifier("app-ServletWebServerApplicationContext") ServletWebServerApplicationContext servletWebServerApplicationContext,
+      ApplicationContext applicationContext, ServletContext servletContext) {
     final AnnotationConfigWebApplicationContext webAppContext = new AnnotationConfigWebApplicationContext();
-    webAppContext.setParent(applicationContext);
+    // webAppContext.setParent(applicationContext);
+    webAppContext.setParent(servletWebServerApplicationContext);
     webAppContext.setServletContext(servletContext);
     webAppContext.register(AppConfig.class);
     return webAppContext;
@@ -85,5 +104,5 @@ public class RestModule {
   public ServletConfig provideServletConfig(ServletContext servletContext) {
     return new RestServletConfig(servletContext);
   }
-  
+
 }

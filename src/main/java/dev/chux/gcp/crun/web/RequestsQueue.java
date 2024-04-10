@@ -3,9 +3,13 @@ package dev.chux.gcp.crun.web;
 import java.lang.ref.WeakReference;
 
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
+import org.springframework.boot.web.server.WebServer;
+import org.springframework.boot.web.server.GracefulShutdownCallback;
+import org.springframework.boot.web.server.GracefulShutdownResult;
 
 import java.time.Duration;
 import java.util.UUID;
@@ -44,7 +48,7 @@ import com.google.common.util.concurrent.FutureCallback;
 
 @Component
 @Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
-public class RequestsQueue {
+public class RequestsQueue implements GracefulShutdownCallback {
   
   private static final int EXTRA_TASKS = 3;
 
@@ -64,9 +68,15 @@ public class RequestsQueue {
 
   private final Duration maxPendingLatency;
 
+  private WebServer webServer;
+  private String webServerKind;
+
   RequestsQueue(@Value("${app.web.requests.minConcurrent}") Integer minConcurrentRequests,
                 @Value("${app.web.requests.maxConcurrent}") Integer maxConcurrentRequests,
                 @Value("${app.web.requests.maxPendingLatency}") Long maxPendingLatency) {
+                // @Qualifier("app-WebServer") WebServer webServer) {
+
+    this.webServer = null;
 
     this.minConcurrentRequests = minConcurrentRequests.intValue();
     this.maxConcurrentRequests = maxConcurrentRequests.intValue();
@@ -79,35 +89,6 @@ public class RequestsQueue {
     this.requestsService = MoreExecutors.listeningDecorator(this.requestsExecutor);
 
     this.uuidQueue = Queues.newLinkedBlockingQueue(this.maxConcurrentRequests);
-    this.requestsService.submit(new Runnable() {
-      public void run() {
-        while( true ) {
-          try {
-            RequestsQueue.this.uuidQueue.put(UUID.randomUUID());
-          } catch(InterruptedException ex) {
-            ex.printStackTrace(System.out);  
-          }
-        }
-      }
-    });
-
-    // submit Runnable that will remove expired requests
-    this.requestsService.submit(new Runnable() {
-      public void run() {
-        while( true ) {
-          try {
-            final PendingRequest pendingRequest = RequestsQueue.this.pendingQueue.take();
-            final Optional<RestRequest> restRequest = pendingRequest.get();
-            if( restRequest.isPresent() && !restRequest.get().isStarted() ) {
-              System.out.println("expiring: " + restRequest);
-              restRequest.get().expire();
-            }
-          } catch(InterruptedException ex) {
-            ex.printStackTrace(System.out);  
-          }
-        }
-      }
-    });
   }
 
   ListenableFuture<RestRequest> submit(final boolean async, final HttpServletRequest request, final HttpServletResponse response) {
@@ -134,6 +115,7 @@ public class RequestsQueue {
       } 
       final PendingRequest pendingRequest = restRequest.preSubmit(maxPendingLatency);
       this.pendingQueue.add(pendingRequest);
+      this.webServer.shutDownGracefully(this);
       return this.requestsService.submit(restRequest, restRequest);
     } catch(RejectedExecutionException rejectedEx) {
       System.out.println("rejected: " + restRequest);
@@ -164,16 +146,55 @@ public class RequestsQueue {
     return UUID.randomUUID();
   }
 
-  public Boolean registerRestHandler(final RestHandler restHandler) {
+  public Boolean registerRestHandler(final WebServer webServer, final String webServerKind, final RestHandler restHandler) {
     if( this.restHandler.compareAndSet(null, restHandler) ) {
       if( this.started.compareAndSet(false, true) ) {
+
+        this.webServer = webServer;
+        this.webServerKind = webServerKind;
+
         this.requestsExecutor.prestartAllCoreThreads();
         System.out.println("Registered: " + restHandler);
         this.startSignal.countDown();
+
+        this.requestsService.submit(new Runnable() {
+          public void run() {
+            while( true ) {
+              try {
+                RequestsQueue.this.uuidQueue.put(UUID.randomUUID());
+              } catch(InterruptedException ex) {
+                ex.printStackTrace(System.out);  
+              }
+            }
+          }
+        });
+
+        // submit Runnable that will remove expired requests
+        this.requestsService.submit(new Runnable() {
+          public void run() {
+            while( true ) {
+              try {
+                final PendingRequest pendingRequest = RequestsQueue.this.pendingQueue.take();
+                final Optional<RestRequest> restRequest = pendingRequest.get();
+                if( restRequest.isPresent() && !restRequest.get().isStarted() ) {
+                  System.out.println("expiring: " + restRequest);
+                  restRequest.get().expire();
+                }
+              } catch(InterruptedException ex) {
+                ex.printStackTrace(System.out);  
+              }
+            }
+          }
+        });
+
         return Boolean.TRUE;
       }
     }
     return Boolean.FALSE;
+  }
+  
+  public void shutdownComplete(final GracefulShutdownResult result) {
+    System.out.println(result);
   }
 
   class PendingRequest implements Delayed, Supplier<Optional<RestRequest>> {

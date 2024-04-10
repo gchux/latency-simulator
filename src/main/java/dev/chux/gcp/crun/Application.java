@@ -49,8 +49,8 @@ public class Application {
 
     final String[] _args = new String[]{};
 
-    final SpringApplication application = 
-      new SpringApplicationBuilder(WebModule.class).bannerMode(Banner.Mode.OFF).properties(properties).build();
+    final SpringApplication application = new SpringApplicationBuilder(WebModule.class)
+      .bannerMode(Banner.Mode.OFF).properties(properties).build();
     final ConfigurableApplicationContext parent = application.run(_args);
     final ConfigurableApplicationContext child = new SpringApplicationBuilder().bannerMode(Banner.Mode.OFF)
       .sources(Application.class).parent(parent).child(RestModule.class).web(WebApplicationType.NONE).run(_args);

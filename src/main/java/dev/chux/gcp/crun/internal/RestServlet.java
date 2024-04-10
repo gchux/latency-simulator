@@ -28,7 +28,7 @@ public class RestServlet extends DispatcherServlet implements RestHandler {
   public void initialize(final ServletConfig servletConfig, 
       final ApplicationContext applicationContext) throws Exception {
     init(servletConfig);
-    initServletBean();
+    // initServletBean();
     initStrategies(applicationContext);
   }
 
