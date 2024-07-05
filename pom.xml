@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>dev.chux.gcp.crun</groupId>
-  <artifactId>redis-client</artifactId>
+  <artifactId>web-client</artifactId>
   <version>1.0.0</version>
 
   <properties>
@@ -12,7 +12,9 @@
     <maven.compiler.source>17</maven.compiler.source>
     <maven.compiler.target>17</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <jakarta-servlet.version>5.0.0</jakarta-servlet.version>
+    <spring.version>3.3.1</spring.version>
+    <jetty.version>12.0.11</jetty.version>
+    <jakarta-servlet.version>6.0.0</jakarta-servlet.version>
     <!-- customize dokcer image to be created via JIB -->
     <gcp.projectId></gcp.projectId>
     <gcp.artifacts.base></gcp.artifacts.base>
@@ -29,7 +31,7 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-web</artifactId>
-      <version>3.1.3</version>
+      <version>${spring.version}</version>
       <exclusions>
         <!-- Exclude the Tomcat dependency -->
         <exclusion>
@@ -39,6 +41,11 @@
       </exclusions>
     </dependency>
     <!-- Use Jetty instead -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-jetty</artifactId>
+      <version>${spring.version}</version>
+    </dependency>
 
     <dependency>
       <groupId>javax.annotation</groupId>
@@ -48,8 +55,13 @@
 
     <dependency>
       <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-jetty</artifactId>
-      <version>3.1.3</version>
+      <artifactId>spring-boot-starter-reactor-netty</artifactId>
+      <version>${spring.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-webflux</artifactId>
+      <version>${spring.version}</version>
     </dependency>
 
     <dependency>
@@ -59,50 +71,9 @@
     </dependency>
 
     <dependency>
-      <groupId>io.lettuce</groupId>
-      <artifactId>lettuce-core</artifactId>
-      <version>6.2.1.RELEASE</version>
-    </dependency>
-
-    <dependency>
         <groupId>jakarta.servlet</groupId>
         <artifactId>jakarta.servlet-api</artifactId>
-        <version>5.0.0</version>
-    </dependency>
-    <dependency>
-        <groupId>org.eclipse.jetty</groupId>
-        <artifactId>jetty-server</artifactId>
-        <version>11.0.18</version>
-    </dependency>
-    <dependency>
-      <groupId>org.eclipse.jetty</groupId>
-      <artifactId>jetty-http</artifactId>
-      <version>11.0.18</version>
-    </dependency>
-    <dependency>
-      <groupId>org.eclipse.jetty</groupId>
-      <artifactId>jetty-util</artifactId>
-      <version>11.0.18</version>
-    </dependency>
-    <dependency>
-      <groupId>org.eclipse.jetty</groupId>
-      <artifactId>jetty-client</artifactId>
-      <version>11.0.18</version>
-    </dependency>
-    <dependency>
-      <groupId>org.eclipse.jetty</groupId>
-      <artifactId>jetty-io</artifactId>
-      <version>11.0.18</version>
-    </dependency>
-    <dependency>
-      <groupId>org.eclipse.jetty.http2</groupId>
-      <artifactId>http2-client</artifactId>
-      <version>11.0.18</version>
-    </dependency>
-    <dependency>
-      <groupId>org.eclipse.jetty.http2</groupId>
-      <artifactId>http2-http-client-transport</artifactId>
-      <version>11.0.18</version>
+      <version>${jakarta-servlet.version}</version>
     </dependency>
   </dependencies>
 
@@ -111,7 +82,7 @@
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
-        <version>3.1.3</version>
+        <version>${spring.version}</version>
         <executions>
           <execution>
             <goals>
