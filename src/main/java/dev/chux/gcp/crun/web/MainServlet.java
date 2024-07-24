@@ -17,6 +17,7 @@ import jakarta.servlet.http.HttpServletMapping;
 import jakarta.servlet.http.MappingMatch;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.util.ServletRequestPathUtils;
 
 @SuppressWarnings("serial")
 // @WebServlet(urlPatterns={"/*"}, asyncSupported=true)
@@ -36,6 +37,8 @@ public class MainServlet extends HttpServlet {
         try {
 
             HttpServletMapping mapping = (HttpServletMapping) request.getAttribute(RequestDispatcher.INCLUDE_MAPPING);
+
+			ServletRequestPathUtils.parseAndCache(request);
 			mapping = (mapping != null ? mapping : request.getHttpServletMapping());
 			request.setAttribute(RequestDispatcher.INCLUDE_MAPPING, mapping);
 

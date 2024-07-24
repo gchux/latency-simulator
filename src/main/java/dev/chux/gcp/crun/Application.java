@@ -30,11 +30,6 @@ public class Application {
   private static final String MAX_STARTUP_LATENCY = "app.startup.maxLatency";
   private static final String COLDSTART_SPIKE_FACTOR = "app.coldstart.spikeFactor";
 
-  public static final int getLatency(int lower, int upper) {
-    final int latency = (int) (Math.random()*(upper-lower))+lower;
-    return (latency < 0)? -1*latency : latency;
-  }
-
   public static void main(final String[] args) {
 
     final Optional<String> latencySettings = Optional.ofNullable(System.getenv(ENV_LATENCY_PROFILE));
@@ -43,6 +38,12 @@ public class Application {
     final int startupLatency = getStartupLatency(properties);
 
     System.out.println("startup latency = " + Integer.toString(startupLatency, 10));
+
+    try {
+      Thread.sleep(startupLatency); // simulate cold-start
+    } catch(Exception ex) {
+      ex.printStackTrace(System.out);
+    }
 
     final String[] _args = new String[]{};
 
@@ -81,7 +82,7 @@ public class Application {
     final int minStartupLatency = getMinStartupLatency(properties);
     final int maxStartupLatency = getMaxStartupLatency(properties);
     final int coldstartSpikeFactor = getColdstartSpikeFactor(properties);
-    final int baseLatency = getLatency(minStartupLatency, maxStartupLatency)*1000;
+    final int baseLatency = Utils.getLatency(minStartupLatency, maxStartupLatency)*1000;
     final boolean spikeLatency = System.currentTimeMillis()%3 == 0;
     return spikeLatency? coldstartSpikeFactor*baseLatency : baseLatency;
   }
