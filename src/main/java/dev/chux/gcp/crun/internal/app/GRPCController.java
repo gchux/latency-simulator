@@ -113,7 +113,7 @@ public class GRPCController {
   private ClientContext clientContext = null;
   private EndpointServiceClient endpointServiceClient = null;
 
-// see: http://cloud/java/docs/reference/gax/latest/overview
+// see: http://cloud.google.com/java/docs/reference/gax/latest/overview
 
   @PostConstruct
   void onPostConstruct() {
@@ -207,7 +207,7 @@ public class GRPCController {
       .setEndpoint("grpc.local:5001")
       .setQuotaProjectId(PROJECT_ID)
       .setTransportChannelProvider(channelProviderBuilder.build())
-      // see: 
+      // see: :
       //   - https://github.com/googleapis/sdk-platform-java/blob/main/gax-java/gax/src/main/java/com/google/api/gax/rpc/HeaderProvider.java#L35
       //   - https://github.com/googleapis/sdk-platform-java/blob/main/gax-java/gax/src/main/java/com/google/api/gax/rpc/NoHeaderProvider.java#L37
       //   - https://github.com/googleapis/sdk-platform-java/blob/main/gax-java/gax/src/main/java/com/google/api/gax/rpc/FixedHeaderProvider.java#L43
@@ -235,7 +235,7 @@ public class GRPCController {
       // see: 
       //   - https://github.com/googleapis/google-cloud-java/blob/main/java-aiplatform/google-cloud-aiplatform/src/main/java/com/google/cloud/aiplatform/v1beta1/EndpointServiceSettings.java
       //   - https://github.com/googleapis/google-cloud-java/blob/main/java-aiplatform/google-cloud-aiplatform/src/main/java/com/google/cloud/aiplatform/v1beta1/stub/EndpointServiceStubSettings.java
-      //     - http://cloud/java/docs/reference/gax/latest/com.google.api.gax.rpc.ClientSettings.Builder
+      //     - http://cloud.google.com/java/docs/reference/gax/latest/com.google.api.gax.rpc.ClientSettings.Builder
       final EndpointServiceSettings endpointServiceSettings = endpointServiceSettingsBuilder.build();
       // see: 
       //   - https://github.com/googleapis/google-cloud-java/blob/main/java-aiplatform/google-cloud-aiplatform/src/main/java/com/google/cloud/aiplatform/v1beta1/EndpointServiceClient.java
