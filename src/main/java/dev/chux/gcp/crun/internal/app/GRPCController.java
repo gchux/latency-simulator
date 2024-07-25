@@ -169,6 +169,7 @@ public class GRPCController {
           return builder.usePlaintext().defaultLoadBalancingPolicy("round_robin");
         }
       })
+      // see: https://cloud.google.com/java/docs/reference/gax/latest/com.google.api.gax.grpc.GrpcInterceptorProvider
       .setInterceptorProvider(new GrpcInterceptorProvider() {
         // see: https://grpc.github.io/grpc-java/javadoc/io/grpc/ClientInterceptor.html
         @Override public List<ClientInterceptor> getInterceptors() {
@@ -179,6 +180,7 @@ public class GRPCController {
               CallOptions callOptions, Channel next
             ) {
               logger.info("method: {}", method);
+              // see: https://grpc.github.io/grpc-java/javadoc/io/grpc/ForwardingClientCall.SimpleForwardingClientCall.html
               return new SimpleForwardingClientCall<ReqT, RespT>(next.newCall(method, callOptions)) {
                 @Override public void start(Listener<RespT> responseListener, Metadata headers) {
                   logger.info("header sent from client: {}", headers);
