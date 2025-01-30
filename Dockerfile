@@ -1,21 +1,22 @@
-FROM eclipse-temurin:17-jdk AS build
+FROM eclipse-temurin:17-jdk AS builder
+
 WORKDIR /workspace/app
+
 COPY mvnw .
 COPY .mvn .mvn
 COPY pom.xml .
 COPY src src
+
 RUN --mount=type=cache,target=/root/.m2 ./mvnw install -DskipTests
-RUN mkdir -p target/dependency && (cd target/dependency; jar -xf ../*.jar)
+RUN mkdir -p target/dependency
 
-FROM curlimages/curl:8.8.0 AS curl
+WORKDIR /workspace/app/target/dependency
 
-WORKDIR /app
-
-ARG OTL_VERSION=1.33.4
-
-RUN curl -ivL --output /app/opentelemetry-javaagent.jar https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v${OTL_VERSION}/opentelemetry-javaagent.jar
+RUN jar -xf ../*.jar
 
 FROM ubuntu:22.04
+
+ARG DEPENDENCY=/workspace/app/target/dependency
 
 ENV JAVA_HOME=/opt/java/openjdk
 COPY --from=eclipse-temurin:17 $JAVA_HOME $JAVA_HOME
@@ -23,13 +24,9 @@ ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
 VOLUME /tmp
 
-ARG DEPENDENCY=/workspace/app/target/dependency
-
-COPY --from=build ${DEPENDENCY}/BOOT-INF/lib /app/lib
-COPY --from=build ${DEPENDENCY}/META-INF /app/META-INF
-COPY --from=build ${DEPENDENCY}/BOOT-INF/classes /app
-
-COPY --from=curl /app/opentelemetry-javaagent.jar /app/opentelemetry-javaagent.jar
+COPY --from=builder ${DEPENDENCY}/BOOT-INF/lib /app/lib
+COPY --from=builder ${DEPENDENCY}/META-INF /app/META-INF
+COPY --from=builder ${DEPENDENCY}/BOOT-INF/classes /app
 
 COPY ./entrypoint.sh /entrypoint.sh
 COPY ./profiles /profiles
