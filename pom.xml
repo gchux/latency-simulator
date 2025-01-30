@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>dev.chux.gcp.crun</groupId>
-  <artifactId>aiplatform-grpc-client</artifactId>
+  <artifactId>latency-simulator</artifactId>
   <version>1.0.0</version>
 
   <properties>

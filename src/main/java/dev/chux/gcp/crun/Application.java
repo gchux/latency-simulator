@@ -4,6 +4,8 @@ import java.io.InputStream;
 import java.io.FileInputStream;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.Map;
+import java.util.HashMap;
 
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.boot.SpringApplication;
@@ -12,8 +14,10 @@ import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.Banner;
 
-import java.util.Map;
-import java.util.HashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.collect.ImmutableMap;
 
 import dev.chux.gcp.crun.web.WebModule;
 import dev.chux.gcp.crun.web.RequestsQueue;
@@ -22,8 +26,13 @@ import dev.chux.gcp.crun.internal.RestModule;
 @SpringBootConfiguration
 public class Application {
 
+  private static final Logger logger = LoggerFactory.getLogger(Application.class);
+
+  private static final String ENV_SERVER_PORT = "PORT";
   private static final String ENV_LATENCY_PROFILE = "LATENCY_PROFILE";
-  private static final String LATENCY_PROFILE = "/profiles/default";
+
+  private static final String DEFAULT_LATENCY_PROFILE = "/profiles/default";
+  private static final String DEFAULT_SERVER_PORT = "8080";
 
   // latency in seconds
   private static final String MIN_STARTUP_LATENCY = "app.startup.minLatency";
@@ -32,12 +41,16 @@ public class Application {
 
   public static void main(final String[] args) {
 
-    final Optional<String> latencySettings = Optional.ofNullable(System.getenv(ENV_LATENCY_PROFILE));
-    final Properties properties = loadProperties(latencySettings.orElse(LATENCY_PROFILE));
+    final Map<String, String> environment = ImmutableMap.copyOf(System.getenv());
 
-    final int startupLatency = getStartupLatency(properties);
+    final Properties profileProperties = getProperies(environment);
+    logger.info("proile properties: {}", profileProperties);
 
-    System.out.println("startup latency = " + Integer.toString(startupLatency, 10));
+    final int serverPort = getServerPort(environment);
+    logger.info("server port = {}", serverPort);
+
+    final int startupLatency = getStartupLatency(profileProperties);
+    logger.info("startup latency = {}", Integer.toString(startupLatency, 10));
 
     try {
       Thread.sleep(startupLatency); // simulate cold-start
@@ -48,10 +61,21 @@ public class Application {
     final String[] _args = new String[]{};
 
     final Map<String, Object> settings = new HashMap<>();
-    settings.put("server.port", Integer.valueOf(8080));
-    final ConfigurableApplicationContext ctx = startApplication(_args, properties, settings);
+    settings.put("server.port", serverPort);
 
-    System.out.println("SpringBoot Context: " + ctx);
+    final ConfigurableApplicationContext ctx = startApplication(_args, profileProperties, settings);
+
+    logger.info("SpringBoot Context: {}", ctx);
+  }
+
+  private static Integer getServerPort(final Map<String, String> environment) {
+    final String serverPortStr = environment.getOrDefault(ENV_SERVER_PORT, DEFAULT_SERVER_PORT);
+    return Integer.parseInt(serverPortStr, 10);
+  }
+
+  private static Properties getProperies(final Map<String, String> environment) {
+    final String latencyProfile = environment.getOrDefault(ENV_LATENCY_PROFILE, DEFAULT_LATENCY_PROFILE);
+    return loadProperties(latencyProfile);
   }
 
   private static ConfigurableApplicationContext startApplication(final String[] args,
@@ -74,7 +98,6 @@ public class Application {
     } catch(Exception e) {
       e.printStackTrace(System.err);
     }
-    System.out.println(properties);
     return properties;
   }
 
