@@ -13,10 +13,8 @@
     <maven.compiler.target>17</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <spring.version>3.3.1</spring.version>
-    <jetty.version>12.0.11</jetty.version>
-    <otel.version>1.40.0</otel.version>
     <jakarta-servlet.version>6.0.0</jakarta-servlet.version>
-    <!-- customize dokcer image to be created via JIB -->
+    <!-- customize docker image to be created via JIB -->
     <gcp.projectId></gcp.projectId>
     <gcp.artifacts.base></gcp.artifacts.base>
     <gcp.artifacts.repo></gcp.artifacts.repo>
@@ -64,61 +62,10 @@
       <artifactId>threetenbp</artifactId>
       <version>1.6.9</version>
     </dependency>
-
-    <!-- Vertex AI client libraries -->
-    <dependency>
-      <groupId>com.google.cloud</groupId>
-      <artifactId>google-cloud-vertexai</artifactId>
-      <version>1.6.0</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.cloud</groupId>
-      <artifactId>google-cloud-aiplatform</artifactId>
-      <version>3.35.0</version>
-    </dependency>
-
-    <dependency>
-      <groupId>io.grpc</groupId>
-      <artifactId>grpc-netty</artifactId>
-      <version>1.65.1</version>
-    </dependency>
-    <dependency>
-      <groupId>io.netty</groupId>
-      <artifactId>netty-transport-native-epoll</artifactId>
-      <version>4.1.112.Final</version>
-    </dependency>
-
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
       <version>32.1.1-jre</version>
-    </dependency>
-
-    <!-- OTEL dependencies -->
-    <dependency>
-      <groupId>io.opentelemetry</groupId>
-      <artifactId>opentelemetry-exporter-otlp</artifactId>
-      <version>${otel.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>io.opentelemetry</groupId>
-      <artifactId>opentelemetry-sdk-extension-autoconfigure</artifactId>
-      <version>${otel.version}</version>
-      </dependency>
-    <dependency>
-      <groupId>io.opentelemetry</groupId>
-      <artifactId>opentelemetry-sdk</artifactId>
-      <version>${otel.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>io.opentelemetry</groupId>
-      <artifactId>opentelemetry-api</artifactId>
-      <version>${otel.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.auth</groupId>
-      <artifactId>google-auth-library-oauth2-http</artifactId>
-      <version>1.23.0</version>
     </dependency>
   </dependencies>
 
