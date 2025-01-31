@@ -45,7 +45,7 @@ public class Application {
     final Map<String, String> environment = ImmutableMap.copyOf(System.getenv());
 
     final Properties profileProperties = getProperies(environment);
-    logger.info("proile properties: {}", profileProperties);
+    logger.info("profile properties: {}", profileProperties);
 
     final int serverPort = getServerPort(environment);
     logger.info("server port = {}", serverPort);
