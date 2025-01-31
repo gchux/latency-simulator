@@ -127,7 +127,7 @@ public class RequestsQueue {
     logger.info("submitted: {}", restRequest);
 
     try {
-      if( !this.startSignal.await( 299l /* maxPendingLatency */ , TimeUnit.SECONDS) ) { 
+      if( !this.startSignal.await(this.maxPendingLatency, TimeUnit.SECONDS) ) { 
         // wait for restController to be registered
         response.setStatus(504);
         return Futures.immediateCancelledFuture();
