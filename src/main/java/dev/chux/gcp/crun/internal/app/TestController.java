@@ -12,9 +12,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
 
@@ -35,30 +38,37 @@ public class TestController {
     return fifthRequest && thirdMillis;
   }
 
-  @Value("${app.response.code}")
+  @Value("${app.response.latency.enabled._root_}")
+  boolean latencyEnabled;
+
+  @Value("${app.response.code._root_}")
   int responseCode;
   
-  @Value("${app.response.minLatency}")
+  @Value("${app.response.latency.min._root_}")
   int minResponseLatecy;
 
-  @Value("${app.response.maxLatency}")
+  @Value("${app.response.latency.max._root_}")
   int maxResponseLatecy;
 
-  @Value("${app.response.latencySpikeFactor}")
+  @Value("${app.response.latency.spikeFactor._root_}")
   int latencySpikeFactor;
 
   @PostConstruct
   void onPostConstruct() { }
 
   private int getResponseLatency(final HttpServletRequest request, final long count) {
+    if (!this.latencyEnabled) {
+      return 0;
+    }
+
     // calculate latency to be introduced
-    final int baseLatency = getLatency(minResponseLatecy, maxResponseLatecy)*1000;
+    final int baseLatency = getLatency(this.minResponseLatecy, this.maxResponseLatecy)*1000;
     // introduce even more latency "randomly"
-    return (TestController.shouldSpikeLatency(count)? latencySpikeFactor*baseLatency : baseLatency)/9;
+    return (TestController.shouldSpikeLatency(count)? this.latencySpikeFactor*baseLatency : baseLatency)/9;
   }
 
   private long applyLatency(final HttpServletRequest request) {
-    final long count = COUNTER.incrementAndGet();
+    final long count = TestController.COUNTER.incrementAndGet();
     final int latency = this.getResponseLatency(request, count);
 
     logger.info("{}#{} | latency = {}", request, Long.toString(count, 10), Integer.toString(latency, 10));
@@ -73,23 +83,26 @@ public class TestController {
     return count;
   }
 
-  @GetMapping("/livenessProbe")
-  public ResponseEntity<String> 
-  livenessProbe(final HttpServletRequest request) {
-    return ResponseEntity.ok().body("OK");
-  }
-
   @GetMapping("/startupProbe")
   public ResponseEntity<String> 
   startupProbe(final HttpServletRequest request) {
     return ResponseEntity.ok().body("OK");
   }
 
-  @GetMapping("/")
+  @GetMapping("/livenessProbe")
+  public ResponseEntity<String> 
+  livenessProbe(final HttpServletRequest request) {
+    return ResponseEntity.ok().body("OK");
+  }
+
+  @RequestMapping(
+    value = "/",
+    method = RequestMethod.GET
+  )
   public ResponseEntity<String> 
   root(final HttpServletRequest request) {
     final long requestID = this.applyLatency(request);
-    return ResponseEntity.status(responseCode).body(Long.toString(requestID, 10));
+    return ResponseEntity.status(this.responseCode).body(Long.toString(requestID, 10));
   }
 
 }

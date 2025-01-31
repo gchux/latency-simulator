@@ -35,8 +35,9 @@ public class Application {
   private static final String DEFAULT_SERVER_PORT = "8080";
 
   // latency in seconds
-  private static final String MIN_STARTUP_LATENCY = "app.startup.minLatency";
-  private static final String MAX_STARTUP_LATENCY = "app.startup.maxLatency";
+  private static final String STARTUP_LATENCY_ENABLED = "app.startup.latency.enabled";
+  private static final String MIN_STARTUP_LATENCY = "app.startup.latency.min";
+  private static final String MAX_STARTUP_LATENCY = "app.startup.latency.max";
   private static final String COLDSTART_SPIKE_FACTOR = "app.coldstart.spikeFactor";
 
   public static void main(final String[] args) {
@@ -49,13 +50,10 @@ public class Application {
     final int serverPort = getServerPort(environment);
     logger.info("server port = {}", serverPort);
 
-    final int startupLatency = getStartupLatency(profileProperties);
-    logger.info("startup latency = {}", Integer.toString(startupLatency, 10));
-
-    try {
-      Thread.sleep(startupLatency); // simulate cold-start
-    } catch(Exception ex) {
-      ex.printStackTrace(System.out);
+    if (isStartupLatencyEnabled(profileProperties)) {
+      applyStartupLatency(profileProperties);
+    } else {
+      logger.info("startup latency disabled");
     }
 
     final String[] _args = new String[]{};
@@ -66,6 +64,17 @@ public class Application {
     final ConfigurableApplicationContext ctx = startApplication(_args, profileProperties, settings);
 
     logger.info("SpringBoot Context: {}", ctx);
+  }
+
+  private static void applyStartupLatency(final Properties profileProperties) {
+    final int startupLatency = getStartupLatency(profileProperties);
+    logger.info("startup latency = {}", Integer.toString(startupLatency, 10));
+
+    try {
+      Thread.sleep(startupLatency); // simulate cold-start
+    } catch(Exception ex) {
+      ex.printStackTrace(System.out);
+    }
   }
 
   private static Integer getServerPort(final Map<String, String> environment) {
@@ -110,6 +119,10 @@ public class Application {
     return spikeLatency? coldstartSpikeFactor*baseLatency : baseLatency;
   }
 
+  private static boolean isStartupLatencyEnabled(final Properties properties) {
+    return getBoolProperty(properties, STARTUP_LATENCY_ENABLED, false);
+  }
+
   private static int getMinStartupLatency(final Properties properties) {
     return getIntProperty(properties, MIN_STARTUP_LATENCY, 0);
   }
@@ -121,6 +134,14 @@ public class Application {
   private static int getColdstartSpikeFactor(final Properties properties) {
     return getIntProperty(properties, COLDSTART_SPIKE_FACTOR, 1);
   } 
+
+  private static boolean getBoolProperty(final Properties properties, final String key, final boolean defaultValue) {
+    final Optional<String> value = getProperty(properties, key);
+    if( value.isPresent() ) {
+      return Boolean.parseBoolean(value.get());
+    }
+    return defaultValue;
+  }
 
   private static int getIntProperty(final Properties properties, final String key, final int defaultValue) {
     final Optional<String> value = getProperty(properties, key);

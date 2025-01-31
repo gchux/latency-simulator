@@ -3,8 +3,6 @@ package dev.chux.gcp.crun.internal;
 import jakarta.servlet.ServletConfig;
 import jakarta.servlet.ServletContext;
 
-import org.springframework.beans.factory.annotation.Value;
-
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
@@ -15,7 +13,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Scope;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import dev.chux.gcp.crun.web.RequestsQueue;
 import dev.chux.gcp.crun.web.RestHandler;
@@ -33,14 +35,18 @@ import static dev.chux.gcp.crun.Utils.getLatency;
   }
 )
 public class RestModule {
+  private static final Logger logger = LoggerFactory.getLogger(RestModule.class);
 
-  @Value("${app.initialization.minLatency}")
+  @Value("${app.initialization.latency.enabled}")
+  private boolean isInitializationLatencyEnabled;
+
+  @Value("${app.initialization.latency.min}")
   private int minInitializationLatecy;
 
-  @Value("${app.initialization.maxLatency}")
+  @Value("${app.initialization.latency.max}")
   private int maxInitializationLatecy;
 
-  @Value("${app.initialization.latencySpikeFactor}")
+  @Value("${app.initialization.latency.spikeFactor}")
   private int latencySpikeFactor;
 
   public static final int getLatency(int lower, int upper) {
@@ -54,24 +60,34 @@ public class RestModule {
     return spikeLatency? latencySpikeFactor*baseLatency : baseLatency;
   }
 
+  private void applyInitializationLatency() {
+    if (!isInitializationLatencyEnabled) { 
+      logger.info("initialization latency disabled");
+      return;
+    }
+
+    final int latency = getInitizalizationLatency();
+    logger.info("initialization latency = {}" + Integer.toString(latency, 10));
+    try {
+      Thread.sleep(latency);
+    } catch(Exception ex) {
+      ex.printStackTrace(System.err);
+    }
+  }
+
   @Bean
   @Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
   public RestHandler provideRestServlet(@Qualifier("app-ServletConfig") ServletConfig servletConfig, 
       @Qualifier("app-WebAppContext") WebApplicationContext webAppContext, RequestsQueue requestsQueue) {
     final RestServlet restServlet = new RestServlet(webAppContext);
+
     try {
       restServlet.initialize(servletConfig, webAppContext);
     } catch(Exception ex) {
       ex.printStackTrace(System.out);
     }
 
-    final int latency = getInitizalizationLatency();
-    System.out.println("initialization latency = " + Integer.toString(latency, 10));
-    try {
-      Thread.sleep(latency);
-    } catch(Exception ex) {
-      ex.printStackTrace(System.err);
-    }
+    this.applyInitializationLatency();
 
     requestsQueue.registerRestHandler(restServlet);
     return restServlet;

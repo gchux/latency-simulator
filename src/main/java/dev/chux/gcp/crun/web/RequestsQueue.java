@@ -7,27 +7,11 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 import org.springframework.beans.factory.annotation.Value;
 
+import java.time.Duration;
 import java.util.UUID;
 import java.util.Optional;
 import java.util.function.Supplier;
-
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
-
-import jakarta.servlet.AsyncContext;
-import jakarta.servlet.ServletRequest;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.ServletResponse;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.Futures;
-
-import com.google.common.base.Objects;
-import com.google.common.collect.Queues;
-import java.time.Duration;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -35,20 +19,40 @@ import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.Callable;
 import java.util.concurrent.DelayQueue;
 import java.util.concurrent.Delayed;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+
+import jakarta.servlet.AsyncContext;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.ServletResponse;
+
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.base.Objects;
+import com.google.common.collect.Queues;
 import com.google.common.base.Preconditions;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.FutureCallback;
-import java.util.concurrent.RejectedExecutionException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Component
 @Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
 public class RequestsQueue {
+  private static final Logger logger = LoggerFactory.getLogger(RequestsQueue.class);
   
   private final int minConcurrentRequests;
   private final int maxConcurrentRequests;
+  private final Duration maxPendingLatency;
 
   private final CountDownLatch startSignal = new CountDownLatch(1);
   private final AtomicBoolean started = new AtomicBoolean(false);
@@ -61,21 +65,19 @@ public class RequestsQueue {
 
   private final BlockingQueue<UUID> uuidQueue;
 
-  private final Duration maxPendingLatency = Duration.ofSeconds(299l);
-
-  //RequestsQueue(@Value("app.web.requests.minConcurrent") int minConcurrentRequests,
-  //    @Value("app.web.requests.maxConcurrent") int maxConcurrentRequests) {
-  RequestsQueue() {
-
-    this.minConcurrentRequests = 1;
-    this.maxConcurrentRequests = 10;
+  RequestsQueue(@Value("${app.web.requests.concurrency.min}") int minConcurrentRequests, 
+    @Value("${app.web.requests.concurrency.max}") int maxConcurrentRequests,
+    @Value("${app.web.requests.pendingLatency.max}") int maxPendingLatency) {
+    this.minConcurrentRequests = minConcurrentRequests;
+    this.maxConcurrentRequests = maxConcurrentRequests;
+    this.maxPendingLatency = Duration.ofSeconds(maxPendingLatency);
 
     this.pendingQueue = new DelayQueue<>();
-    this.requestsQueue = Queues.newLinkedBlockingQueue(13); // buffer 80 requests
-    this.requestsExecutor = new ThreadPoolExecutor(13, 13, 5L, TimeUnit.SECONDS, this.requestsQueue);
+    this.requestsQueue = Queues.newLinkedBlockingQueue(this.maxConcurrentRequests); // buffer 80 requests
+    this.requestsExecutor = new ThreadPoolExecutor(this.minConcurrentRequests, this.maxConcurrentRequests, 5L, TimeUnit.SECONDS, this.requestsQueue);
     this.requestsService = MoreExecutors.listeningDecorator(this.requestsExecutor);
 
-    this.uuidQueue = Queues.newLinkedBlockingQueue(10);
+    this.uuidQueue = Queues.newLinkedBlockingQueue(this.minConcurrentRequests);
     this.requestsService.submit(new Runnable() {
       public void run() {
         while( true ) {
@@ -96,7 +98,7 @@ public class RequestsQueue {
             final PendingRequest pendingRequest = RequestsQueue.this.pendingQueue.take();
             final Optional<RestRequest> restRequest = pendingRequest.get();
             if( restRequest.isPresent() && !restRequest.get().isStarted() ) {
-              System.out.println("expiring: " + restRequest);
+              logger.info("expiring: {}", restRequest);
               restRequest.get().expire();
             }
           } catch(InterruptedException ex) {
@@ -113,15 +115,16 @@ public class RequestsQueue {
     final int queueSize = this.requestsQueue.size();
     final int executorActiveCount = this.requestsExecutor.getActiveCount();
     final int executorPoolSize = this.requestsExecutor.getPoolSize();
+    final int executorMaxPoolSize = this.requestsExecutor.getMaximumPoolSize();
 
-    System.out.println("Q: " + queueSize + "/" + queueRemainingCapacity + "/13");
-    System.out.println("X: " + executorPoolSize + "/" + executorActiveCount + "/" + this.requestsExecutor.getMaximumPoolSize());
+    logger.info("Q: {} / {} / {}", queueSize, queueRemainingCapacity, this.maxConcurrentRequests);
+    logger.info("X: {} / {} / {}", executorPoolSize, executorActiveCount, executorMaxPoolSize);
 
     final long maxPendingLatency = this.maxPendingLatency.toMillis();
 
     final RestRequest restRequest = new RestRequest(async, request, response);
 
-    System.out.println("submit: " + restRequest);
+    logger.info("submitted: {}", restRequest);
 
     try {
       if( !this.startSignal.await( 299l /* maxPendingLatency */ , TimeUnit.SECONDS) ) { 
@@ -133,12 +136,12 @@ public class RequestsQueue {
       this.pendingQueue.add(pendingRequest);
       return this.requestsService.submit(restRequest, restRequest);
     } catch(RejectedExecutionException rejectedEx) {
-      System.out.println("rejected: " + restRequest);
+      logger.info("rejected: {}", restRequest);
     } catch (Exception ex) {
       return Futures.immediateFailedFuture(ex);
     }
 
-    System.out.println("sinking: " + restRequest);
+    logger.info("sinking: {}", restRequest);
 
     try {
       restRequest.run();
@@ -165,7 +168,7 @@ public class RequestsQueue {
     if( this.restHandler.compareAndSet(null, restHandler) ) {
       if( this.started.compareAndSet(false, true) ) {
         this.requestsExecutor.prestartAllCoreThreads();
-        System.out.println("Registered: " + restHandler);
+        logger.info("registered: {}", restHandler);
         this.startSignal.countDown();
         return Boolean.TRUE;
       }
@@ -276,7 +279,7 @@ public class RequestsQueue {
         this.startSignal.await(); // wait for postSubmit to complete
         if( !this.isExpired() && this.started.compareAndSet(false, true) ) {
           RequestsQueue.this.pendingQueue.remove(this.pendingRequest.get());
-          System.out.println("handling: " + this.request);
+          logger.info("handling: {}", this.request);
           RequestsQueue.this.getRestHandler().handle(this.request, this.response);
         }
       } catch(Exception ex) {
@@ -296,7 +299,7 @@ public class RequestsQueue {
     public Boolean expire() {
       final boolean expired = !this.isStarted() && this.expired.compareAndSet(false, true);
 
-      System.out.println("expired: " + this.request + " | " + this.isStarted() + " | " + this.isExpired());
+      logger.info("expired: {}", this.request + " | " + this.isStarted() + " | " + this.isExpired());
       
       if( !expired ) { return Boolean.FALSE; }
       
