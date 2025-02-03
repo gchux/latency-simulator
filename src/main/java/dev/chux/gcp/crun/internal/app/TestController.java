@@ -64,7 +64,7 @@ public class TestController {
     // calculate latency to be introduced
     final int baseLatency = getLatency(this.minResponseLatecy, this.maxResponseLatecy)*1000;
     // introduce even more latency "randomly"
-    return (TestController.shouldSpikeLatency(count)? this.latencySpikeFactor*baseLatency : baseLatency)/9;
+    return TestController.shouldSpikeLatency(count)? this.latencySpikeFactor*baseLatency : baseLatency;
   }
 
   private long applyLatency(final HttpServletRequest request) {
