@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+export MAIN_PID=$$
+
+# set -eux -o pipefail
+
+# the 1st argument of this script expects the full container image URI minus the tag
+if [ "${1}" = "" ]
+then
+  echo "Usage: $0 <us-docker.pkg.dev/project_id/repo_name/image:tag>"
+  exit
+fi
+
+export DOCKER_IMAGE_URI="${1}"
+
+
+echo "Building Cloud Run latency simulator"
+
+docker buildx build \
+  --no-cache \
+  --platform=linux/amd64 \
+  --file="Dockerfile" \
+  --tag="${DOCKER_IMAGE_URI}" .

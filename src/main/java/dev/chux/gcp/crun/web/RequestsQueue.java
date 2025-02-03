@@ -52,6 +52,7 @@ public class RequestsQueue {
   
   private final int minConcurrentRequests;
   private final int maxConcurrentRequests;
+  private final int maxPendingLatencySeconds;
   private final Duration maxPendingLatency;
 
   private final CountDownLatch startSignal = new CountDownLatch(1);
@@ -67,10 +68,11 @@ public class RequestsQueue {
 
   RequestsQueue(@Value("${app.web.requests.concurrency.min}") int minConcurrentRequests, 
     @Value("${app.web.requests.concurrency.max}") int maxConcurrentRequests,
-    @Value("${app.web.requests.pendingLatency.max}") int maxPendingLatency) {
+    @Value("${app.web.requests.pendingLatency.max}") int maxPendingLatencySeconds) {
     this.minConcurrentRequests = minConcurrentRequests;
     this.maxConcurrentRequests = maxConcurrentRequests;
-    this.maxPendingLatency = Duration.ofSeconds(maxPendingLatency);
+    this.maxPendingLatencySeconds = maxPendingLatencySeconds;
+    this.maxPendingLatency = Duration.ofSeconds(maxPendingLatencySeconds);
 
     this.pendingQueue = new DelayQueue<>();
     this.requestsQueue = Queues.newLinkedBlockingQueue(this.maxConcurrentRequests); // buffer 80 requests
@@ -127,7 +129,7 @@ public class RequestsQueue {
     logger.info("submitted: {}", restRequest);
 
     try {
-      if( !this.startSignal.await(this.maxPendingLatency, TimeUnit.SECONDS) ) { 
+      if( !this.startSignal.await(this.maxPendingLatencySeconds, TimeUnit.SECONDS) ) { 
         // wait for restController to be registered
         response.setStatus(504);
         return Futures.immediateCancelledFuture();

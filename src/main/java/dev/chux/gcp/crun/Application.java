@@ -44,7 +44,7 @@ public class Application {
 
     final Map<String, String> environment = ImmutableMap.copyOf(System.getenv());
 
-    final Properties profileProperties = getProperies(environment);
+    final Properties profileProperties = getProperties(environment);
     logger.info("profile properties: {}", profileProperties);
 
     final int serverPort = getServerPort(environment);
@@ -77,16 +77,6 @@ public class Application {
     }
   }
 
-  private static Integer getServerPort(final Map<String, String> environment) {
-    final String serverPortStr = environment.getOrDefault(ENV_SERVER_PORT, DEFAULT_SERVER_PORT);
-    return Integer.parseInt(serverPortStr, 10);
-  }
-
-  private static Properties getProperies(final Map<String, String> environment) {
-    final String latencyProfile = environment.getOrDefault(ENV_LATENCY_PROFILE, DEFAULT_LATENCY_PROFILE);
-    return loadProperties(latencyProfile);
-  }
-
   private static ConfigurableApplicationContext startApplication(final String[] args,
       final Properties properties, final Map<String, Object> settings) {
 
@@ -98,6 +88,16 @@ public class Application {
       .sources(Application.class).parent(parent).child(RestModule.class).web(WebApplicationType.NONE).run(args);
 
     return parent;
+  }
+
+  private static Integer getServerPort(final Map<String, String> environment) {
+    final String serverPortStr = environment.getOrDefault(ENV_SERVER_PORT, DEFAULT_SERVER_PORT);
+    return Integer.parseInt(serverPortStr, 10);
+  }
+
+  private static Properties getProperties(final Map<String, String> environment) {
+    final String latencyProfile = environment.getOrDefault(ENV_LATENCY_PROFILE, DEFAULT_LATENCY_PROFILE);
+    return loadProperties(latencyProfile);
   }
 
   private static Properties loadProperties(final String latencyProfile) {
